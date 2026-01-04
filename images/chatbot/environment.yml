@@ -1,0 +1,11 @@
+name: chatbot
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python >=3.14,<4
+
+  - streamlit >=1.52,<2
+  - openai >=2.14,<3
+  - pydantic >=2,<3
+  - pydantic-settings >=2,<3

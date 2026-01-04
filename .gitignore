@@ -1,3 +1,9 @@
+# Environment specific files
+.env
+
+# Backend Terraform
+backend.hcl
+
 # Local .terraform directories
 .terraform/
 
