@@ -39,3 +39,21 @@ module "eks" {
   # Add your SSO role as cluster admin
   admin_users = var.admin_users
 }
+
+module "chatbot" {
+  source = "git@github.com:jkim-mlops/terraform-modules.git//modules/docker?ref=0.2.0"
+
+  image_name    = "chatbot"
+  image_tag     = "0.1.0"
+  build_context = "../images/chatbot"
+  platform     = "linux/amd64"
+}
+
+module "vllm-server" {
+  source = "git@github.com:jkim-mlops/terraform-modules.git//modules/docker?ref=0.2.0"
+
+  image_name    = "vllm-server"
+  image_tag     = "0.1.0"
+  build_context = "../images/vllm-server"
+  platform     = "linux/amd64"
+}
