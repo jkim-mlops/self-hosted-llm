@@ -1,0 +1,26 @@
+{
+    "conventionalCommits.scopes": [
+        "Taskfile.yml",
+        "iam.tf",
+        "kubernetes.tf",
+        "main.tf",
+        "outputs.tf",
+        "providers.tf",
+        "variables.tf",
+        "versions.tf",
+        ".gitignore",
+        "deployment",
+        "deployment/backend.hcl",
+        "deployment/main.tf",
+        "deployment/providers.tf",
+        "deployment/variables.tf",
+        "deployment/versions.tf",
+        "deployment/terraform.tfvars",
+        "images",
+        "images/chatbot",
+        "images/vllm-server",
+        "models",
+        "models/Qwen",
+        "policies"
+    ]
+}
