@@ -223,54 +223,69 @@ resource "aws_s3_bucket_public_access_block" "model" {
 }
 
 # -----------------------------------------------------------------------------
-# IAM Role for vLLM Pod to Access S3 (IRSA)
+# IAM Policy Document for vLLM S3 Access
+# -----------------------------------------------------------------------------
+data "aws_iam_policy_document" "vllm_s3_access" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = [
+      aws_s3_bucket.model.arn,
+      "${aws_s3_bucket.model.arn}/*",
+    ]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# IAM Policy for vLLM S3 Access
 # -----------------------------------------------------------------------------
 resource "aws_iam_policy" "vllm_s3_access" {
   name        = "${var.name}-vllm-s3-access"
   description = "IAM policy for vLLM pods to download models from S3"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.model.arn,
-          "${aws_s3_bucket.model.arn}/*"
-        ]
-      }
-    ]
-  })
+  policy      = data.aws_iam_policy_document.vllm_s3_access.json
 
   tags = {
     Name = "${var.name}-vllm-s3-access"
   }
 }
 
-resource "aws_iam_role" "vllm" {
-  name        = "${var.name}-vllm"
-  description = "IAM role for vLLM pods using IRSA"
+# -----------------------------------------------------------------------------
+# IAM Policy Document for vLLM Assume Role
+# -----------------------------------------------------------------------------
+data "aws_iam_policy_document" "vllm_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Federated = aws_iam_openid_connect_provider.eks.arn
-      }
-      Action = "sts:AssumeRoleWithWebIdentity"
-      Condition = {
-        StringEquals = {
-          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = "system:serviceaccount:llm:vllm"
-          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
-  })
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:llm:vllm"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# IAM Role for vLLM Pod (IRSA)
+# -----------------------------------------------------------------------------
+resource "aws_iam_role" "vllm" {
+  name               = "${var.name}-vllm"
+  description        = "IAM role for vLLM pods using IRSA"
+  assume_role_policy = data.aws_iam_policy_document.vllm_assume_role.json
 
   tags = {
     Name = "${var.name}-vllm-role"

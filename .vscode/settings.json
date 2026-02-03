@@ -26,8 +26,6 @@
         "models",
         "models/Qwen",
         "outputs.tf",
-        "policies",
-        "policies/aws-load-balancer-controller-policy.json",
         "providers.tf",
         "variables.tf",
         "versions.tf"
