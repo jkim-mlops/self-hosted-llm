@@ -26,7 +26,7 @@ to ensure DNS records are created/cleaned up properly.
 Run with `task <name>` from this directory.
 
 - `apply` - Apply terraform and create DNS record
-- `destroy` - Full destroy - cleanup resources and run terraform destroy
+- `destroy` - Full destroy (handles inaccessible clusters gracefully)
 - `setup-tfvars` - Create terraform.tfvars with IAM user and SSO role
 - `download-model` - Download LLM model from HuggingFace to local models/ directory
 - `cleanup` - Clean up resources that block terraform destroy

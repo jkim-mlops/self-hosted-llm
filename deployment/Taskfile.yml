@@ -135,6 +135,34 @@ tasks:
     desc: Full destroy - cleanup resources and run terraform destroy
     cmds:
       - task: cleanup
+      - |
+        # Try to refresh kubeconfig
+        CLUSTER_NAME=$(aws eks list-clusters --query 'clusters[?contains(@, `llm`)] | [0]' --output text 2>/dev/null || echo "")
+        if [ -n "$CLUSTER_NAME" ] && [ "$CLUSTER_NAME" != "None" ]; then
+          echo "Refreshing kubeconfig for $CLUSTER_NAME..."
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --alias "$CLUSTER_NAME" 2>/dev/null || true
+
+          # Test if cluster is accessible
+          if ! kubectl get ns &>/dev/null; then
+            echo "Cluster is inaccessible. Removing K8s resources from state..."
+            K8S_RESOURCES=$(terraform state list 2>/dev/null | grep -E 'kubernetes_|helm_' || true)
+            if [ -n "$K8S_RESOURCES" ]; then
+              echo "$K8S_RESOURCES" | while read -r resource; do
+                echo "Removing: $resource"
+                terraform state rm "$resource" 2>/dev/null || true
+              done
+            fi
+          fi
+        else
+          echo "No cluster found. Removing K8s resources from state if any..."
+          K8S_RESOURCES=$(terraform state list 2>/dev/null | grep -E 'kubernetes_|helm_' || true)
+          if [ -n "$K8S_RESOURCES" ]; then
+            echo "$K8S_RESOURCES" | while read -r resource; do
+              echo "Removing: $resource"
+              terraform state rm "$resource" 2>/dev/null || true
+            done
+          fi
+        fi
       - terraform destroy -auto-approve
 
   # ---------------------------------------------------------------------------
