@@ -1,7 +1,8 @@
 {
     "conventionalCommits.scopes": [
         ".claude",
-        ".claude/skills/tidy.md",
+        ".claude/commands",
+        ".claude/commands/tidy.md",
         ".gitignore",
         ".vscode",
         ".vscode/settings.json",
