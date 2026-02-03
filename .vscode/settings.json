@@ -21,6 +21,7 @@
         "images/vllm-server",
         "models",
         "models/Qwen",
-        "policies"
+        "policies",
+        ".vscode"
     ]
 }
