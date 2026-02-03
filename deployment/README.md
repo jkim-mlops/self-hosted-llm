@@ -3,7 +3,17 @@
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_admin_sso_role_name"></a> [admin\_sso\_role\_name](#input\_admin\_sso\_role\_name) | Name of the AWS SSO AdministratorAccess role | `string` | n/a | yes |
+| <a name="input_chatbot_replicas"></a> [chatbot\_replicas](#input\_chatbot\_replicas) | Number of chatbot frontend replicas | `number` | `2` | no |
+| <a name="input_domain_name"></a> [domain\_name](#input\_domain\_name) | Domain name for the chatbot application | `string` | n/a | yes |
+| <a name="input_gpu_node_desired_size"></a> [gpu\_node\_desired\_size](#input\_gpu\_node\_desired\_size) | Desired number of GPU nodes in the EKS cluster | `number` | n/a | yes |
+| <a name="input_hosted_zone_name"></a> [hosted\_zone\_name](#input\_hosted\_zone\_name) | Route 53 hosted zone name (e.g., jkim.ai) | `string` | n/a | yes |
+| <a name="input_iam_user_name"></a> [iam\_user\_name](#input\_iam\_user\_name) | Name of the IAM user for cluster admin access | `string` | n/a | yes |
+| <a name="input_model_id"></a> [model\_id](#input\_model\_id) | HuggingFace model ID (e.g., Qwen/Qwen2.5-1.5B-Instruct) | `string` | `"Qwen/Qwen2.5-1.5B-Instruct"` | no |
+| <a name="input_model_s3_prefix"></a> [model\_s3\_prefix](#input\_model\_s3\_prefix) | S3 prefix path to the model files | `string` | `"models"` | no |
+| <a name="input_vllm_replicas"></a> [vllm\_replicas](#input\_vllm\_replicas) | Number of vLLM inference server replicas | `number` | `1` | no |
 
 ## Outputs
 
@@ -17,11 +27,16 @@ No outputs.
 
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.27.0 |
+| <a name="requirement_docker"></a> [docker](#requirement\_docker) | ~> 3.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.17 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.20 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.27.0 |
 <!-- END_TF_DOCS -->

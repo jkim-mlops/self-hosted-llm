@@ -702,19 +702,19 @@ resource "kubernetes_ingress_v1" "chatbot" {
     namespace = kubernetes_namespace.llm.metadata[0].name
 
     annotations = {
-      "kubernetes.io/ingress.class"                = "alb"
-      "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
-      "alb.ingress.kubernetes.io/target-type"      = "ip"
-      "alb.ingress.kubernetes.io/listen-ports"     = jsonencode([{ "HTTPS" : 443 }])
-      "alb.ingress.kubernetes.io/certificate-arn"  = aws_acm_certificate.chatbot.arn
-      "alb.ingress.kubernetes.io/ssl-redirect"     = "443"
+      "kubernetes.io/ingress.class"                            = "alb"
+      "alb.ingress.kubernetes.io/scheme"                       = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type"                  = "ip"
+      "alb.ingress.kubernetes.io/listen-ports"                 = jsonencode([{ "HTTPS" : 443 }])
+      "alb.ingress.kubernetes.io/certificate-arn"              = aws_acm_certificate.chatbot.arn
+      "alb.ingress.kubernetes.io/ssl-redirect"                 = "443"
       "alb.ingress.kubernetes.io/healthcheck-path"             = "/_stcore/health"
       "alb.ingress.kubernetes.io/healthcheck-interval-seconds" = "30"
       "alb.ingress.kubernetes.io/healthcheck-timeout-seconds"  = "10"
       "alb.ingress.kubernetes.io/healthy-threshold-count"      = "2"
       "alb.ingress.kubernetes.io/unhealthy-threshold-count"    = "3"
-      "alb.ingress.kubernetes.io/subnets"          = join(",", module.vpc.public_subnet_ids)
-      "alb.ingress.kubernetes.io/security-groups"  = aws_security_group.alb.id
+      "alb.ingress.kubernetes.io/subnets"                      = join(",", module.vpc.public_subnet_ids)
+      "alb.ingress.kubernetes.io/security-groups"              = aws_security_group.alb.id
     }
   }
 

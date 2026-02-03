@@ -1,3 +1,15 @@
+/**
+ * # Self-Hosted LLM Infrastructure
+ *
+ * Terraform module for deploying a self-hosted LLM chatbot on AWS EKS with:
+ * - VPC with public/private subnets
+ * - EKS cluster with CPU and GPU node groups
+ * - vLLM inference server with GPU support
+ * - Streamlit chatbot frontend
+ * - ALB ingress with HTTPS and custom domain
+ * - S3 bucket for model storage with IRSA
+ */
+
 module "vpc" {
   source = "git@github.com:jkim-mlops/terraform-modules.git//modules/vpc?ref=0.2.0"
 
@@ -46,7 +58,7 @@ module "chatbot" {
   image_name    = "chatbot"
   image_tag     = "0.1.0"
   build_context = "../images/chatbot"
-  platform     = "linux/amd64"
+  platform      = "linux/amd64"
 }
 
 module "vllm-server" {
