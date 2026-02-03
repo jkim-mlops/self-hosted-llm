@@ -6,10 +6,12 @@ Lint, format, and generate documentation for the codebase.
 
 ### 1. Find Terraform Directories
 
-Find all directories containing `main.tf` files, excluding `.terraform/` directories:
+Find all directories containing `main.tf` files from the project root, excluding `.terraform/` directories:
 ```bash
-find . -name "main.tf" -not -path "*/.terraform/*" -exec dirname {} \; | sort -u
+cd <project-root> && find . -name "main.tf" -not -path "*/.terraform/*" -exec dirname {} \; | sort -u
 ```
+
+All subsequent steps should operate from the project root to ensure consistent paths.
 
 ### 2. Add Missing Terraform Docstrings
 
@@ -55,9 +57,12 @@ Rules:
 
 ### 4. Python Linting and Formatting
 
+Always run from the project root to catch all Python files:
 ```bash
-ruff check --fix . && ruff format .
+cd <project-root> && ruff check --fix . && ruff format .
 ```
+
+If no Python files exist in the project, this step can be skipped.
 
 ### 5. Terraform Formatting and Docs
 
@@ -119,10 +124,12 @@ Do NOT add:
 
 ## Instructions
 
-1. Find all directories with `main.tf` (excluding `.terraform/`)
+**Important:** Always run all steps from the project root directory, regardless of where the user invoked the command.
+
+1. Find all directories with `main.tf` from project root (excluding `.terraform/`)
 2. Read each `main.tf` and add missing docstring headers (include Tasks section if Taskfile.yml exists)
 3. Tidy Terraform section comments (77 dashes, consistent format)
-4. Run ruff for Python linting/formatting
+4. Run ruff for Python linting/formatting from project root (searches all subdirectories)
 5. Run terraform fmt and terraform-docs in each Terraform directory
 6. Tidy `environment.yml`: alphabetize deps (python first) and add version constraints (`>=minor,<nextmajor`)
 7. Update `.vscode/settings.json` with any missing tracked files

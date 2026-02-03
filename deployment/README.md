@@ -3,6 +3,24 @@
 
 Deploys the self-hosted LLM infrastructure to AWS.
 
+## Prerequisites
+
+1. Copy `terraform.tfvars.example` to `terraform.tfvars` and fill in values
+   (or run `task setup-tfvars` to auto-detect IAM user and SSO role)
+2. Download the model: `task download-model`
+3. Initialize Terraform: `terraform init`
+
+## DNS Record Management
+
+The Route 53 A record pointing to the ALB is managed via Taskfile rather
+than Terraform. This avoids a circular dependency: the ALB is created by
+the AWS Load Balancer Controller (triggered by the Kubernetes Ingress),
+not by Terraform directly. Managing the DNS record in Terraform would
+require a `data` source lookup that fails on first apply.
+
+Use `task apply` and `task destroy` instead of raw terraform commands
+to ensure DNS records are created/cleaned up properly.
+
 ## Tasks
 
 Run with `task <name>` from this directory.
