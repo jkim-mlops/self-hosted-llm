@@ -15,14 +15,26 @@ find . -name "main.tf" -not -path "*/.terraform/*" -exec dirname {} \; | sort -u
 
 For each `main.tf` found, check if it starts with a `/** ... */` docstring block. If missing, add one describing what the module does.
 
+If a `Taskfile.yml` exists in the same directory, include a "Tasks" section documenting the key tasks.
+
 Example format:
 ```hcl
 /**
  * # Module Name
  *
  * Brief description of what this module deploys/manages.
+ *
+ * ## Tasks
+ *
+ * Run with `task <name>` from this directory.
+ *
+ * - `apply` - Apply terraform and create DNS record
+ * - `destroy` - Full destroy - cleanup resources and run terraform destroy
+ * - `setup-tfvars` - Create terraform.tfvars with IAM user and SSO role
  */
 ```
+
+Include tasks that are useful for operators (apply, destroy, setup, cleanup, etc.). Skip internal/helper tasks.
 
 ### 3. Tidy Terraform Section Comments
 
@@ -108,7 +120,7 @@ Do NOT add:
 ## Instructions
 
 1. Find all directories with `main.tf` (excluding `.terraform/`)
-2. Read each `main.tf` and add missing docstring headers
+2. Read each `main.tf` and add missing docstring headers (include Tasks section if Taskfile.yml exists)
 3. Tidy Terraform section comments (77 dashes, consistent format)
 4. Run ruff for Python linting/formatting
 5. Run terraform fmt and terraform-docs in each Terraform directory

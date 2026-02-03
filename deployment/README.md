@@ -1,6 +1,18 @@
 <!-- BEGIN_TF_DOCS -->
 # Deployment Configuration
 
+Deploys the self-hosted LLM infrastructure to AWS.
+
+## Tasks
+
+Run with `task <name>` from this directory.
+
+- `apply` - Apply terraform and create DNS record
+- `destroy` - Full destroy - cleanup resources and run terraform destroy
+- `setup-tfvars` - Create terraform.tfvars with IAM user and SSO role
+- `download-model` - Download LLM model from HuggingFace to local models/ directory
+- `cleanup` - Clean up resources that block terraform destroy
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
