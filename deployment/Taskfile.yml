@@ -1,12 +1,16 @@
 version: '3'
 
+vars:
+  MODEL_ID: Qwen/Qwen2.5-1.5B-Instruct
+  MODEL_DIR: ../models
+
 tasks:
   setup-tfvars:
     desc: Create terraform.tfvars with IAM user and SSO role
     cmds:
       - |
         echo "Generating terraform.tfvars..."
-        
+
         # Get IAM user name from AWS_PROFILE or AWS caller identity
         if [ -n "$AWS_PROFILE" ]; then
           IAM_USER="$AWS_PROFILE"
@@ -14,16 +18,33 @@ tasks:
           # Fallback to extracting from caller identity
           IAM_USER=$(aws sts get-caller-identity --query 'Arn' --output text | sed 's/.*user\///')
         fi
-        
+
         # Fetch the admin SSO role name
         SSO_ROLE=$(aws iam list-roles --query 'Roles[?contains(RoleName, `AWSReservedSSO_AdministratorAccess`)].RoleName' --output text | head -n1)
-        
+
         # Write to terraform.tfvars
         cat > terraform.tfvars <<EOF
         iam_user_name         = "$IAM_USER"
         admin_sso_role_name   = "$SSO_ROLE"
         EOF
-        
+
         echo "terraform.tfvars created with:"
         echo "  iam_user_name: $IAM_USER"
         echo "  admin_sso_role_name: $SSO_ROLE"
+
+  download-model:
+    desc: Download LLM model from HuggingFace to local models/ directory
+    cmds:
+      - |
+        echo "Checking for HuggingFace CLI..."
+        if ! command -v hf &> /dev/null; then
+          echo "Installing HuggingFace CLI..."
+          curl -LsSf https://hf.co/cli/install.sh | bash
+        fi
+      - |
+        echo "Downloading {{.MODEL_ID}} to {{.MODEL_DIR}}..."
+        mkdir -p {{.MODEL_DIR}}
+        hf download {{.MODEL_ID}} --local-dir {{.MODEL_DIR}}/{{.MODEL_ID}}
+        echo "Model downloaded to {{.MODEL_DIR}}/{{.MODEL_ID}}"
+    status:
+      - test -d {{.MODEL_DIR}}/{{.MODEL_ID}}

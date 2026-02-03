@@ -5,21 +5,24 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="OPENAI_", extra="allow")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="OPENAI_", extra="allow"
+    )
     base_url: str = Field(default=...)
     model: str = Field(default=...)
     api_key: SecretStr = Field(default=...)
 
 
+settings = Settings()
+
+
 @st.cache_resource
 def get_openai_client() -> OpenAI:
-    base_url = settings.base_url
-    if not base_url:
-        raise ValueError("OPENAI_BASE_URL environment variable is not set.")
-    return OpenAI(base_url=base_url, api_key=settings.api_key.get_secret_value())
+    return OpenAI(
+        base_url=settings.base_url, api_key=settings.api_key.get_secret_value()
+    )
 
 
-settings = Settings()
 client = get_openai_client()
 
 if "messages" not in st.session_state:
@@ -44,6 +47,7 @@ if prompt := left.chat_input("Say something"):
     )
 
     full_response = ""
+
     def chunks_generator():
         global full_response
         for chunk in chunks:

@@ -50,6 +50,19 @@ module "main" {
     data.aws_iam_role.this.arn
   ]
 
+  # Node scaling
   cpu_node_desired_size = 1
-  gpu_node_desired_size = 0
+  gpu_node_desired_size = var.gpu_node_desired_size
+
+  # Domain configuration
+  domain_name      = var.domain_name
+  hosted_zone_name = var.hosted_zone_name
+
+  # Model configuration
+  model_id        = var.model_id
+  model_s3_prefix = var.model_s3_prefix
+
+  # Application scaling
+  vllm_replicas    = var.vllm_replicas
+  chatbot_replicas = var.chatbot_replicas
 }
