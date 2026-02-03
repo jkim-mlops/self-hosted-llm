@@ -113,6 +113,19 @@ resource "aws_security_group" "alb" {
 }
 
 # -----------------------------------------------------------------------------
+# Security Group Rule: Allow ALB to reach EKS pods (for target-type: ip)
+# -----------------------------------------------------------------------------
+resource "aws_security_group_rule" "alb_to_eks_chatbot" {
+  description              = "Allow ALB to reach chatbot pods"
+  type                     = "ingress"
+  from_port                = 8501
+  to_port                  = 8501
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
+  security_group_id        = module.eks.cluster.vpc_config[0].cluster_security_group_id
+}
+
+# -----------------------------------------------------------------------------
 # ACM Certificate for HTTPS
 # -----------------------------------------------------------------------------
 resource "aws_acm_certificate" "chatbot" {

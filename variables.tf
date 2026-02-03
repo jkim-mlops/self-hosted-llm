@@ -63,7 +63,7 @@ variable "vllm_replicas" {
 variable "chatbot_replicas" {
   description = "Number of chatbot frontend replicas"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 # -----------------------------------------------------------------------------

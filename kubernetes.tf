@@ -266,6 +266,11 @@ resource "kubernetes_deployment" "vllm" {
   spec {
     replicas = var.vllm_replicas
 
+    # Use Recreate strategy to avoid resource conflicts with limited GPU nodes
+    strategy {
+      type = "Recreate"
+    }
+
     selector {
       match_labels = {
         app = "vllm"
@@ -641,6 +646,7 @@ resource "kubernetes_deployment" "chatbot" {
             }
             initial_delay_seconds = 30
             period_seconds        = 30
+            timeout_seconds       = 10
           }
 
           readiness_probe {
@@ -650,6 +656,7 @@ resource "kubernetes_deployment" "chatbot" {
             }
             initial_delay_seconds = 10
             period_seconds        = 10
+            timeout_seconds       = 5
           }
         }
       }
@@ -701,7 +708,11 @@ resource "kubernetes_ingress_v1" "chatbot" {
       "alb.ingress.kubernetes.io/listen-ports"     = jsonencode([{ "HTTPS" : 443 }])
       "alb.ingress.kubernetes.io/certificate-arn"  = aws_acm_certificate.chatbot.arn
       "alb.ingress.kubernetes.io/ssl-redirect"     = "443"
-      "alb.ingress.kubernetes.io/healthcheck-path" = "/_stcore/health"
+      "alb.ingress.kubernetes.io/healthcheck-path"             = "/_stcore/health"
+      "alb.ingress.kubernetes.io/healthcheck-interval-seconds" = "30"
+      "alb.ingress.kubernetes.io/healthcheck-timeout-seconds"  = "10"
+      "alb.ingress.kubernetes.io/healthy-threshold-count"      = "2"
+      "alb.ingress.kubernetes.io/unhealthy-threshold-count"    = "3"
       "alb.ingress.kubernetes.io/subnets"          = join(",", module.vpc.public_subnet_ids)
       "alb.ingress.kubernetes.io/security-groups"  = aws_security_group.alb.id
     }

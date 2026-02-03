@@ -8,9 +8,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="OPENAI_", extra="allow"
     )
-    base_url: str = Field(default=...)
-    model: str = Field(default=...)
-    api_key: SecretStr = Field(default=...)
+    base_url: str = Field(default="")
+    model: str = Field(default="")
+    api_key: SecretStr = Field(default=SecretStr("abc123"))
 
 
 settings = Settings()
@@ -32,7 +32,7 @@ chat_window = st.container(height=600)
 for message in st.session_state.messages:
     chat_window.chat_message(message["role"]).write(message["content"])
 
-left, right = st.columns([8, 2])
+left, right = st.columns([7, 3])
 if right.button("Reset Chat", icon=":material/sync:"):
     del st.session_state["messages"]
     st.rerun()
