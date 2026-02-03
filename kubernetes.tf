@@ -734,20 +734,10 @@ resource "kubernetes_ingress_v1" "chatbot" {
 
 # -----------------------------------------------------------------------------
 # Route 53 Record for ALB
-# Created after ALB Controller provisions the load balancer
+# NOTE: DNS record is created via 'task apply' after ALB is provisioned
+# and deleted via 'task cleanup' before destroy. This avoids circular
+# dependencies that break terraform destroy.
 # -----------------------------------------------------------------------------
-resource "aws_route53_record" "chatbot" {
-  count = length(try(kubernetes_ingress_v1.chatbot.status[0].load_balancer[0].ingress, [])) > 0 ? 1 : 0
-
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = var.domain_name
-  type    = "A"
-
-  alias {
-    name                   = kubernetes_ingress_v1.chatbot.status[0].load_balancer[0].ingress[0].hostname
-    zone_id                = "Z35SXDOTRQ7X7K" # ALB hosted zone ID for us-east-1
-    evaluate_target_health = true
-  }
-
-  depends_on = [helm_release.aws_load_balancer_controller]
-}
+# To manually create DNS after deployment:
+#   aws route53 change-resource-record-sets --hosted-zone-id <ZONE_ID> \
+#     --change-batch '{"Changes":[{"Action":"UPSERT","ResourceRecordSet":{"Name":"<DOMAIN>","Type":"A","AliasTarget":{"HostedZoneId":"<ALB_ZONE_ID>","DNSName":"<ALB_DNS_NAME>","EvaluateTargetHealth":true}}}]}'

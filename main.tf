@@ -162,7 +162,8 @@ resource "aws_acm_certificate_validation" "chatbot" {
 # S3 Bucket for LLM Model Storage
 # -----------------------------------------------------------------------------
 resource "aws_s3_bucket" "model" {
-  bucket = "${var.name}-llm-models"
+  bucket        = "${var.name}-llm-models"
+  force_destroy = true # Allow bucket deletion even with objects/versions
 
   tags = {
     Name = "${var.name}-llm-models"

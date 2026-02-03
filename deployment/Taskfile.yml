@@ -48,3 +48,91 @@ tasks:
         echo "Model downloaded to {{.MODEL_DIR}}/{{.MODEL_ID}}"
     status:
       - test -d {{.MODEL_DIR}}/{{.MODEL_ID}}
+
+  delete-dns-record:
+    desc: Delete the Route53 DNS record for the chatbot
+    vars:
+      DOMAIN_NAME: chatbot.dev.jkim.ai
+      HOSTED_ZONE_ID: Z0093063EDVGVDAB9KRN
+    cmds:
+      - |
+        echo "Deleting DNS record for {{.DOMAIN_NAME}}..."
+        RECORD=$(aws route53 list-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} \
+          --query "ResourceRecordSets[?Name=='{{.DOMAIN_NAME}}.'].{Name:Name,Type:Type}" --output json)
+        if [ "$RECORD" != "[]" ]; then
+          # Get the full record to delete
+          aws route53 list-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} \
+            --query "ResourceRecordSets[?Name=='{{.DOMAIN_NAME}}.']" --output json | \
+          jq '{Changes: [{Action: "DELETE", ResourceRecordSet: .[0]}]}' | \
+          aws route53 change-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} --change-batch file:///dev/stdin || true
+          echo "DNS record deleted"
+        else
+          echo "No DNS record found to delete"
+        fi
+
+  delete-alb:
+    desc: Delete the ALB created by the AWS Load Balancer Controller
+    cmds:
+      - |
+        echo "Finding and deleting ALB..."
+        ALB_ARN=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(DNSName, `k8s-llm`)].LoadBalancerArn' --output text)
+        if [ -n "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
+          echo "Deleting ALB: $ALB_ARN"
+          aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN"
+          echo "ALB deleted. Waiting for release of public IPs..."
+          sleep 10
+        else
+          echo "No ALB found to delete"
+        fi
+
+  cleanup:
+    desc: Clean up resources that block terraform destroy
+    cmds:
+      - task: delete-dns-record
+      - task: delete-alb
+      - echo "Cleanup complete"
+
+  create-dns-record:
+    desc: Create the Route53 DNS record pointing to the ALB
+    vars:
+      DOMAIN_NAME: chatbot.dev.jkim.ai
+      HOSTED_ZONE_ID: Z0093063EDVGVDAB9KRN
+    cmds:
+      - |
+        echo "Finding ALB for DNS record..."
+        ALB_DNS=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(DNSName, `k8s-llm`)].DNSName' --output text)
+        ALB_ZONE=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(DNSName, `k8s-llm`)].CanonicalHostedZoneId' --output text)
+
+        if [ -n "$ALB_DNS" ] && [ "$ALB_DNS" != "None" ]; then
+          echo "Creating DNS record: {{.DOMAIN_NAME}} -> $ALB_DNS"
+          aws route53 change-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} --change-batch "{
+            \"Changes\": [{
+              \"Action\": \"UPSERT\",
+              \"ResourceRecordSet\": {
+                \"Name\": \"{{.DOMAIN_NAME}}\",
+                \"Type\": \"A\",
+                \"AliasTarget\": {
+                  \"HostedZoneId\": \"$ALB_ZONE\",
+                  \"DNSName\": \"$ALB_DNS\",
+                  \"EvaluateTargetHealth\": true
+                }
+              }
+            }]
+          }"
+          echo "DNS record created: https://{{.DOMAIN_NAME}}"
+        else
+          echo "ERROR: No ALB found. Ensure the ingress is deployed first."
+          exit 1
+        fi
+
+  apply:
+    desc: Apply terraform and create DNS record
+    cmds:
+      - terraform apply -auto-approve
+      - task: create-dns-record
+
+  destroy:
+    desc: Full destroy - cleanup resources and run terraform destroy
+    cmds:
+      - task: cleanup
+      - terraform destroy -auto-approve
