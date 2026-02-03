@@ -1,0 +1,18 @@
+# AWS IAM Configuration
+admin_sso_role_name = "AWSReservedSSO_AdministratorAccess_abc123"
+iam_user_name       = "your-iam-username"
+
+# Domain Configuration
+domain_name      = "chatbot.example.com"
+hosted_zone_name = "example.com"
+
+# Node Scaling (set to 0 to save costs when not in use)
+gpu_node_desired_size = 1
+
+# Model Configuration (optional - defaults shown)
+# model_id        = "Qwen/Qwen2.5-1.5B-Instruct"
+# model_s3_prefix = "models"
+
+# Application Scaling (optional - defaults shown)
+# vllm_replicas    = 1
+# chatbot_replicas = 2

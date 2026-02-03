@@ -1,3 +1,9 @@
+# Environment specific files
+.env
+
+# Backend Terraform
+backend.hcl
+
 # Local .terraform directories
 .terraform/
 
@@ -35,3 +41,6 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# LLM model files (large binary files)
+models/

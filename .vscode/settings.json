@@ -1,0 +1,32 @@
+{
+    "conventionalCommits.scopes": [
+        ".claude",
+        ".claude/commands",
+        ".claude/commands/tidy.md",
+        ".gitignore",
+        ".vscode",
+        ".vscode/settings.json",
+        "deployment",
+        "deployment/Taskfile.yml",
+        "deployment/main.tf",
+        "deployment/providers.tf",
+        "deployment/terraform.tfvars.example",
+        "deployment/variables.tf",
+        "deployment/versions.tf",
+        "iam.tf",
+        "images",
+        "images/chatbot",
+        "images/chatbot/Dockerfile",
+        "images/chatbot/environment.yml",
+        "images/chatbot/main.py",
+        "images/vllm-server",
+        "images/vllm-server/Dockerfile",
+        "kubernetes.tf",
+        "LICENSE",
+        "main.tf",
+        "outputs.tf",
+        "providers.tf",
+        "variables.tf",
+        "versions.tf"
+    ]
+}

@@ -1,0 +1,227 @@
+version: '3'
+
+vars:
+  MODEL_ID: Qwen/Qwen2.5-1.5B-Instruct
+  MODEL_DIR: ../models
+
+tasks:
+  setup-tfvars:
+    desc: Create terraform.tfvars with IAM user and SSO role
+    cmds:
+      - |
+        echo "Generating terraform.tfvars..."
+
+        # Get IAM user name from AWS_PROFILE or AWS caller identity
+        if [ -n "$AWS_PROFILE" ]; then
+          IAM_USER="$AWS_PROFILE"
+        else
+          # Fallback to extracting from caller identity
+          IAM_USER=$(aws sts get-caller-identity --query 'Arn' --output text | sed 's/.*user\///')
+        fi
+
+        # Fetch the admin SSO role name
+        SSO_ROLE=$(aws iam list-roles --query 'Roles[?contains(RoleName, `AWSReservedSSO_AdministratorAccess`)].RoleName' --output text | head -n1)
+
+        # Write to terraform.tfvars
+        cat > terraform.tfvars <<EOF
+        iam_user_name         = "$IAM_USER"
+        admin_sso_role_name   = "$SSO_ROLE"
+        EOF
+
+        echo "terraform.tfvars created with:"
+        echo "  iam_user_name: $IAM_USER"
+        echo "  admin_sso_role_name: $SSO_ROLE"
+
+  download-model:
+    desc: Download LLM model from HuggingFace to local models/ directory
+    cmds:
+      - |
+        echo "Checking for HuggingFace CLI..."
+        if ! command -v hf &> /dev/null; then
+          echo "Installing HuggingFace CLI..."
+          curl -LsSf https://hf.co/cli/install.sh | bash
+        fi
+      - |
+        echo "Downloading {{.MODEL_ID}} to {{.MODEL_DIR}}..."
+        mkdir -p {{.MODEL_DIR}}
+        hf download {{.MODEL_ID}} --local-dir {{.MODEL_DIR}}/{{.MODEL_ID}}
+        echo "Model downloaded to {{.MODEL_DIR}}/{{.MODEL_ID}}"
+    status:
+      - test -d {{.MODEL_DIR}}/{{.MODEL_ID}}
+
+  delete-dns-record:
+    desc: Delete the Route53 DNS record for the chatbot
+    vars:
+      DOMAIN_NAME: chatbot.dev.jkim.ai
+      HOSTED_ZONE_ID: Z0093063EDVGVDAB9KRN
+    cmds:
+      - |
+        echo "Deleting DNS record for {{.DOMAIN_NAME}}..."
+        RECORD=$(aws route53 list-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} \
+          --query "ResourceRecordSets[?Name=='{{.DOMAIN_NAME}}.'].{Name:Name,Type:Type}" --output json)
+        if [ "$RECORD" != "[]" ]; then
+          # Get the full record to delete
+          aws route53 list-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} \
+            --query "ResourceRecordSets[?Name=='{{.DOMAIN_NAME}}.']" --output json | \
+          jq '{Changes: [{Action: "DELETE", ResourceRecordSet: .[0]}]}' | \
+          aws route53 change-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} --change-batch file:///dev/stdin || true
+          echo "DNS record deleted"
+        else
+          echo "No DNS record found to delete"
+        fi
+
+  delete-alb:
+    desc: Delete the ALB created by the AWS Load Balancer Controller
+    cmds:
+      - |
+        echo "Finding and deleting ALB..."
+        ALB_ARN=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(DNSName, `k8s-llm`)].LoadBalancerArn' --output text)
+        if [ -n "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
+          echo "Deleting ALB: $ALB_ARN"
+          aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN"
+          echo "ALB deleted. Waiting for release of public IPs..."
+          sleep 10
+        else
+          echo "No ALB found to delete"
+        fi
+
+  cleanup:
+    desc: Clean up resources that block terraform destroy
+    cmds:
+      - task: delete-dns-record
+      - task: delete-alb
+      - echo "Cleanup complete"
+
+  create-dns-record:
+    desc: Create the Route53 DNS record pointing to the ALB
+    vars:
+      DOMAIN_NAME: chatbot.dev.jkim.ai
+      HOSTED_ZONE_ID: Z0093063EDVGVDAB9KRN
+    cmds:
+      - |
+        echo "Finding ALB for DNS record..."
+        ALB_DNS=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(DNSName, `k8s-llm`)].DNSName' --output text)
+        ALB_ZONE=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(DNSName, `k8s-llm`)].CanonicalHostedZoneId' --output text)
+
+        if [ -n "$ALB_DNS" ] && [ "$ALB_DNS" != "None" ]; then
+          echo "Creating DNS record: {{.DOMAIN_NAME}} -> $ALB_DNS"
+          aws route53 change-resource-record-sets --hosted-zone-id {{.HOSTED_ZONE_ID}} --change-batch "{
+            \"Changes\": [{
+              \"Action\": \"UPSERT\",
+              \"ResourceRecordSet\": {
+                \"Name\": \"{{.DOMAIN_NAME}}\",
+                \"Type\": \"A\",
+                \"AliasTarget\": {
+                  \"HostedZoneId\": \"$ALB_ZONE\",
+                  \"DNSName\": \"$ALB_DNS\",
+                  \"EvaluateTargetHealth\": true
+                }
+              }
+            }]
+          }"
+          echo "DNS record created: https://{{.DOMAIN_NAME}}"
+        else
+          echo "ERROR: No ALB found. Ensure the ingress is deployed first."
+          exit 1
+        fi
+
+  apply:
+    desc: Apply terraform and create DNS record
+    cmds:
+      - terraform apply -auto-approve
+      - task: create-dns-record
+
+  destroy:
+    desc: Full destroy - cleanup resources and run terraform destroy
+    cmds:
+      - task: cleanup
+      - |
+        # Try to refresh kubeconfig
+        CLUSTER_NAME=$(aws eks list-clusters --query 'clusters[?contains(@, `llm`)] | [0]' --output text 2>/dev/null || echo "")
+        if [ -n "$CLUSTER_NAME" ] && [ "$CLUSTER_NAME" != "None" ]; then
+          echo "Refreshing kubeconfig for $CLUSTER_NAME..."
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --alias "$CLUSTER_NAME" 2>/dev/null || true
+
+          # Test if cluster is accessible
+          if ! kubectl get ns &>/dev/null; then
+            echo "Cluster is inaccessible. Removing K8s resources from state..."
+            K8S_RESOURCES=$(terraform state list 2>/dev/null | grep -E 'kubernetes_|helm_' || true)
+            if [ -n "$K8S_RESOURCES" ]; then
+              echo "$K8S_RESOURCES" | while read -r resource; do
+                echo "Removing: $resource"
+                terraform state rm "$resource" 2>/dev/null || true
+              done
+            fi
+          fi
+        else
+          echo "No cluster found. Removing K8s resources from state if any..."
+          K8S_RESOURCES=$(terraform state list 2>/dev/null | grep -E 'kubernetes_|helm_' || true)
+          if [ -n "$K8S_RESOURCES" ]; then
+            echo "$K8S_RESOURCES" | while read -r resource; do
+              echo "Removing: $resource"
+              terraform state rm "$resource" 2>/dev/null || true
+            done
+          fi
+        fi
+      - terraform destroy -auto-approve
+
+  # ---------------------------------------------------------------------------
+  # Security and Cost Analysis
+  # ---------------------------------------------------------------------------
+  trivy:
+    desc: Run security scan on Terraform and Docker configs
+    cmds:
+      - |
+        if ! command -v trivy &> /dev/null; then
+          echo "Installing trivy..."
+          brew install trivy
+        fi
+      - trivy config --severity HIGH,CRITICAL ..
+
+  infracost:
+    desc: Show cost estimate for infrastructure changes
+    cmds:
+      - |
+        if ! command -v infracost &> /dev/null; then
+          echo "Installing infracost..."
+          brew install infracost
+          echo "Please run 'infracost auth login' to authenticate, then re-run this task."
+          exit 1
+        fi
+      - infracost breakdown --path .
+
+  infracost-diff:
+    desc: Show cost difference between current state and planned changes
+    cmds:
+      - |
+        if ! command -v infracost &> /dev/null; then
+          echo "Installing infracost..."
+          brew install infracost
+          echo "Please run 'infracost auth login' to authenticate, then re-run this task."
+          exit 1
+        fi
+      - infracost diff --path .
+
+  # ---------------------------------------------------------------------------
+  # Smoke Tests
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    desc: Run health checks after deployment
+    vars:
+      DOMAIN_NAME: chatbot.dev.jkim.ai
+    cmds:
+      - |
+        echo "Checking Kubernetes pods..."
+        kubectl get pods -n llm
+      - |
+        echo "Checking vLLM health..."
+        kubectl exec -n llm deploy/vllm -- curl -sf http://localhost:8000/health || echo "vLLM not ready"
+      - |
+        echo "Checking chatbot endpoint..."
+        curl -sf https://{{.DOMAIN_NAME}}/_stcore/health && echo "Chatbot is healthy!" || echo "Chatbot not reachable"
+
+  check:
+    desc: Run all checks (trivy + infracost)
+    cmds:
+      - task: trivy
+      - task: infracost
