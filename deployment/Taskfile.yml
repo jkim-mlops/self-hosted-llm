@@ -136,3 +136,64 @@ tasks:
     cmds:
       - task: cleanup
       - terraform destroy -auto-approve
+
+  # ---------------------------------------------------------------------------
+  # Security and Cost Analysis
+  # ---------------------------------------------------------------------------
+  trivy:
+    desc: Run security scan on Terraform and Docker configs
+    cmds:
+      - |
+        if ! command -v trivy &> /dev/null; then
+          echo "Installing trivy..."
+          brew install trivy
+        fi
+      - trivy config --severity HIGH,CRITICAL ..
+
+  infracost:
+    desc: Show cost estimate for infrastructure changes
+    cmds:
+      - |
+        if ! command -v infracost &> /dev/null; then
+          echo "Installing infracost..."
+          brew install infracost
+          echo "Please run 'infracost auth login' to authenticate, then re-run this task."
+          exit 1
+        fi
+      - infracost breakdown --path .
+
+  infracost-diff:
+    desc: Show cost difference between current state and planned changes
+    cmds:
+      - |
+        if ! command -v infracost &> /dev/null; then
+          echo "Installing infracost..."
+          brew install infracost
+          echo "Please run 'infracost auth login' to authenticate, then re-run this task."
+          exit 1
+        fi
+      - infracost diff --path .
+
+  # ---------------------------------------------------------------------------
+  # Smoke Tests
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    desc: Run health checks after deployment
+    vars:
+      DOMAIN_NAME: chatbot.dev.jkim.ai
+    cmds:
+      - |
+        echo "Checking Kubernetes pods..."
+        kubectl get pods -n llm
+      - |
+        echo "Checking vLLM health..."
+        kubectl exec -n llm deploy/vllm -- curl -sf http://localhost:8000/health || echo "vLLM not ready"
+      - |
+        echo "Checking chatbot endpoint..."
+        curl -sf https://{{.DOMAIN_NAME}}/_stcore/health && echo "Chatbot is healthy!" || echo "Chatbot not reachable"
+
+  check:
+    desc: Run all checks (trivy + infracost)
+    cmds:
+      - task: trivy
+      - task: infracost

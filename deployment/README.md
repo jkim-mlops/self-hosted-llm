@@ -30,6 +30,10 @@ Run with `task <name>` from this directory.
 - `setup-tfvars` - Create terraform.tfvars with IAM user and SSO role
 - `download-model` - Download LLM model from HuggingFace to local models/ directory
 - `cleanup` - Clean up resources that block terraform destroy
+- `trivy` - Run security scan on Terraform and Docker configs
+- `infracost` - Show cost estimate for infrastructure
+- `smoke-test` - Run health checks after deployment
+- `check` - Run all checks (trivy + infracost)
 
 ## Inputs
 
