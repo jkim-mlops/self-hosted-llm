@@ -1,3 +1,6 @@
+# -----------------------------------------------------------------------------
+# General Configuration
+# -----------------------------------------------------------------------------
 variable "name" {
   description = "Name prefix for resources"
   type        = string
@@ -8,6 +11,9 @@ variable "region" {
   type        = string
 }
 
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
 variable "cidr_block" {
   description = "CIDR block for VPC"
   type        = string
@@ -22,6 +28,9 @@ variable "subnets" {
   }))
 }
 
+# -----------------------------------------------------------------------------
+# EKS Configuration
+# -----------------------------------------------------------------------------
 variable "admin_users" {
   description = "List of IAM user/role ARNs for cluster admin access"
   type        = list(string)

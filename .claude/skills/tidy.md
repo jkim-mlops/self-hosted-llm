@@ -24,13 +24,30 @@ Example format:
  */
 ```
 
-### 3. Python Linting and Formatting
+### 3. Tidy Terraform Section Comments
+
+Ensure all `.tf` files use consistent section comment headers. Each logical group of resources should have a header in this format:
+
+```hcl
+# -----------------------------------------------------------------------------
+# Section Title
+# -----------------------------------------------------------------------------
+```
+
+Rules:
+- Use 77 dashes (total line width: 79 chars with `# `)
+- Title should be descriptive (e.g., "VPC Configuration", "IAM Roles", "EKS Cluster")
+- Add missing section headers for ungrouped resources
+- Standardize inconsistent headers to match this format
+- Group related resources under the same section
+
+### 4. Python Linting and Formatting
 
 ```bash
 ruff check --fix . && ruff format .
 ```
 
-### 4. Terraform Formatting and Docs
+### 5. Terraform Formatting and Docs
 
 Run in each directory containing `main.tf`:
 ```bash
@@ -48,7 +65,31 @@ Then for each subfolder with `main.tf`, run:
 cd <subfolder> && terraform-docs markdown table --output-file README.md .
 ```
 
-### 5. Update VS Code Conventional Commit Scopes
+### 6. Tidy Conda Environment Files
+
+Find all `environment.yml` files and:
+
+1. **Alphabetize dependencies** - Keep `python` at the top, sort the rest alphabetically
+2. **Add version constraints** - Ensure all deps follow `>=minor,<nextmajor` pattern
+
+Version constraint format:
+- `package >=X.Y,<Z` where Z is the next major version
+- Example: `openai >=2.14,<3` (allows 2.14+ but not 3.x)
+
+If a dependency is missing version constraints, look up the current version and add appropriate bounds.
+
+Example:
+```yaml
+dependencies:
+  - python >=3.14,<4
+
+  - openai >=2.14,<3
+  - pydantic >=2,<3
+  - pydantic-settings >=2,<3
+  - streamlit >=1.52,<2
+```
+
+### 7. Update VS Code Conventional Commit Scopes
 
 Check `.vscode/settings.json` for the `conventionalCommits.scopes` array. Add any tracked files (non-gitignored) that are missing from the list.
 
@@ -68,7 +109,9 @@ Do NOT add:
 
 1. Find all directories with `main.tf` (excluding `.terraform/`)
 2. Read each `main.tf` and add missing docstring headers
-3. Run ruff for Python linting/formatting
-4. Run terraform fmt and terraform-docs in each Terraform directory
-5. Update `.vscode/settings.json` with any missing tracked files
-6. Report any issues found and changes made
+3. Tidy Terraform section comments (77 dashes, consistent format)
+4. Run ruff for Python linting/formatting
+5. Run terraform fmt and terraform-docs in each Terraform directory
+6. Tidy `environment.yml`: alphabetize deps (python first) and add version constraints (`>=minor,<nextmajor`)
+7. Update `.vscode/settings.json` with any missing tracked files
+8. Report any issues found and changes made
